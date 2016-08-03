@@ -4,6 +4,7 @@ import signal
 import socket
 import sys
 import getopt
+# import argparse
 from io import StringIO
 from mimetypes import guess_type
 import config
@@ -11,14 +12,32 @@ import traceback
 
 REQUEST_QUEUE_SIZE = 1024
 
+config_dict = {
+    'server_host': config.server_host,
+    'server_location': config.server_location,
+    'server_port': config.server_port,
+    'default_home': config.default_home,
+    'default_file': config.default_file
+}
+
 def serve_forever(argv):
-    server_host = config.server_host
-    server_location = config.server_location
-    server_port = config.server_port
-    default_home = config.default_home
-    default_file = config.default_file
+    # try:
+    #     parser = argparse.ArgumentParser()
+    #
+    #     parser.add_argument('-l', action='store', dest=config_dict['server_location'],
+    #                         help=' to set location (takes argument)')
+    #     parser.add_argument('-p', action='store', dest=config_dict['server_port'], type=int,
+    #                         help=' to set server port (takes argument)')
+    #     parser.add_argument('-i', action='store', dest=config_dict['server_host'],
+    #                         help=' to set server host (takes argument)')
+    #     parser.add_argument('-f', action='store', dest=config_dict['default_file'],
+    #                         help='to set default page (index.html as default)')
+    #     parser.add_argument('-o', action='store_false', default=True, dest=config_dict['default_home'],
+    #                         help='to set home page URL. If FALSE http://localhost:8888/index.html '
+    #                              'if TRUE http://localhost:8888/')
+
     try:
-        opts, args = getopt.getopt(argv, 'hl:p:i:f:o:', ["help", "location=", "port=", "host=", "file=", "home="])
+        opts, args = getopt.getopt(argv, 'hl:p:i:f:o', ["help", "location=", "port=", "host=", "file=", "home"])
     except getopt.GetoptError:
         print('Command line options:\n'
               '-h or --help for help\n'
@@ -27,7 +46,7 @@ def serve_forever(argv):
               '-i or --host to set server host (takes argument)\n'
               '-f or --file to set default page (index.html as default\n'
               '-o or --home to set home page URL. If FALSE http://localhost:8888/index.html if\n'
-              'if TRUE http://localhost:8888/ (takes argument)')
+              'if TRUE http://localhost:8888/')
         sys.exit(2)
     for opt, arg in opts:
         if opt in ('-h', '--help'):
@@ -38,25 +57,25 @@ def serve_forever(argv):
                   '-i or --host to set server host (takes argument)\n'
                   '-f or --file to set default page (index.html as default\n'
                   '-o or --home to set home page URL. If FALSE http://localhost:8888/index.html if\n'
-                  'if TRUE http://localhost:8888/ (takes argument)')
+                  'if TRUE http://localhost:8888/')
             sys.exit()
         elif opt in ('-l', '--location'):
-            server_location = arg
-            print('Location changed to:' +arg)
+            config_dict['server_location'] = arg
+            print('Location changed to: ' + arg)
         elif opt in ('-p', '--port'):
-            server_port = int(arg)
-            print('Port changed to:' +arg)
+            config_dict['server_port'] = int(arg)
+            print('Port changed to: ' + arg)
         elif opt in ('-i', '--host'):
-            server_host = arg
-            print('Host changed to:' +arg)
+            config_dict['server_host'] = arg
+            print('Host changed to: ' + arg)
         elif opt in ('-f', '--file'):
-            default_file = arg
-            print('Default file changed to:' +arg)
+            config_dict['default_file'] = arg
+            print('Default file changed to: ' + arg)
         elif opt in ('-o', '--home'):
-            default_home = arg
-            print("Home URL equal to:" +arg)
+            config_dict['default_home'] = False
+            print("Home URL equal to: False")
 
-    SERVER_ADDRESS = (HOST, PORT) = server_host, server_port
+    SERVER_ADDRESS = (HOST, PORT) = config_dict['server_host'], config_dict['server_port']
     listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     listen_socket.bind(SERVER_ADDRESS)
@@ -108,27 +127,27 @@ def handle_request(client_connection):
         shiet = raw_requestline.split()
         met = shiet[0]
         url = shiet[1][1:]
-        destination = os.path.join(config.server_location, url)
+        destination = os.path.join(config_dict['server_location'], url)
 
         if url == 'redirect':
             print('Redirect')
             http_response = b"""HTTP/1.1 301 Moved Permanently
-Location: """ + bytes(os.path.join(config.server_host, 'dupa.txt'), 'utf-8') + b"""\n\n"""
+Location: """ + bytes(os.path.join(config_dict['server_host'], 'dupa.txt'), 'utf-8') + b"""\n\n"""
             client_connection.sendall(http_response)
             return
 
-        if url == '' and config.default_home:
+        if url == '' and config_dict['default_home']:
             print('Home')
-            with open(config.default_file, 'rb') as htmlDisplay:
+            with open(config_dict['default_file'], 'rb') as htmlDisplay:
                 textDisplay = htmlDisplay.read()
-                content_type, encoding = guess_type(config.default_file, True)
+                content_type, encoding = guess_type(config_dict['default_file'], True)
                 http_response = b"""HTTP/1.1 200 OK\nContent-Type: """ + bytes(content_type, 'utf-8') + b"""\n\n""" + textDisplay
                 client_connection.sendall(http_response)
                 return
-        elif url == '' and not config.default_home:
+        elif url == '' and not config_dict['default_home']:
             print('Home')
             http_response = b"""HTTP/1.1 301 Moved Permanently
-Location: """ + bytes(os.path.join(config.server_host, config.default_file), 'utf-8') + b"""\n\n"""
+Location: """ + bytes(os.path.join(config_dict['server_host'], config_dict['default_file']), 'utf-8') + b"""\n\n"""
             client_connection.sendall(http_response)
             return
 
