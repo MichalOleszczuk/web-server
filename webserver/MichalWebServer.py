@@ -171,5 +171,32 @@ Error 404: Page not found
 
     client_connection.sendall(http_response)
 
+def gracefull_exit_signal_handler(signum, frame, original_sigint_handler):
+    # restore the original signal handler as otherwise evil things will happen
+    # in raw_input when CTRL+C is pressed, and our signal handler is not re-entrant
+    signal.signal(signal.SIGINT, original_sigint_handler)
+
+    try:
+        if input("\nReally quit? (y/n)> ").lower().startswith('y'):
+            print('Done')
+            sys.exit(1)
+
+    except KeyboardInterrupt:
+        print("\nOk ok, quitting")
+        sys.exit(1)
+
+    # restore the exit gracefully handler here
+    signal.signal(signal.SIGINT, gracefull_exit_signal_handler)
+
+def setup_grafecul_signal_handler():
+    original_sigint_handler = signal.getsignal(signal.SIGINT)
+    bound_gracefull_exit_signal_handler = lambda signum, frame: gracefull_exit_signal_handler(signum, frame, original_sigint_handler)
+    signal.signal(signal.SIGINT, bound_gracefull_exit_signal_handler)
+    signal.signal(signal.SIGTERM, bound_gracefull_exit_signal_handler)
+    signal.signal(signal.SIGINT, bound_gracefull_exit_signal_handler)
+    signal.signal(signal.SIGALRM, bound_gracefull_exit_signal_handler)
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+
 if __name__ == '__main__':
+    setup_grafecul_signal_handler()
     serve_forever(sys.argv[1:])
