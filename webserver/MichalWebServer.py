@@ -132,7 +132,7 @@ def handle_request(client_connection):
         if url == 'redirect':
             print('Redirect')
             http_response = b"""HTTP/1.1 301 Moved Permanently
-Location: """ + bytes(os.path.join(config_dict['server_host'], 'dupa.txt'), 'utf-8') + b"""\n\n"""
+Location: """ + bytes(os.path.join(config_dict['server_host'], 'test.txt'), 'utf-8') + b"""\n\n"""
             client_connection.sendall(http_response)
             return
 
